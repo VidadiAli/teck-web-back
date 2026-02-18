@@ -24,11 +24,8 @@ app.use(cors({
   origin: [
     "http://localhost:5173",
     "http://localhost:5174",
-    "https://vidadiali.github.io/teck-admin/",
-    "https://vidadiali.github.io/teck-web/",
-    "https://vidadiali.github.io/",
-    "https://vidadiali.github.io/",
-    "https://teck-web-back-1.onrender.com/"
+    "https://vidadiali.github.io",
+    "https://teck-web-back-1.onrender.com"
   ],
   credentials: true,
 }));
