@@ -14,7 +14,20 @@ import AuthRoutes from "./routes/customerToken.routes.js";
 import orderRoutes from "./routes/productOrder.routes.js";
 
 dotenv.config();
-connectDB();
+
+const startServer = async () => {
+  try {
+    await connectDB(); 
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT} 🚀`);
+    });
+  } catch (error) {
+    console.error("Server failed to start ❌", error);
+  }
+};
+
+startServer();
+
 
 const app = express();
 
@@ -24,8 +37,7 @@ app.use(cors({
   origin: [
     "http://localhost:5173",
     "http://localhost:5174",
-    "https://vidadiali.github.io",
-    "https://teck-web-back-1.onrender.com"
+    "https://vidadiali.github.io"
   ],
   credentials: true,
 }));
