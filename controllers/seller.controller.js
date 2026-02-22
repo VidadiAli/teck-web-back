@@ -2,6 +2,7 @@ import { Seller } from "../models/seller.model.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { Token } from "../models/token.model.js";
+import { generateAccessToken, generateRefreshToken } from "../middleware/generateTokens.js";
 
 export const addSeller = async (req, res) => {
   try {
@@ -35,19 +36,14 @@ export const loginSeller = async (req, res) => {
     const isMatch = await bcrypt.compare(password, seller.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
-    const accessToken = jwt.sign(
-      { id: seller._id, email: seller.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" }
-    );
+    const accessToken = generateAccessToken(seller);
+    const refreshToken = generateRefreshToken(seller);
 
-    const refreshToken = jwt.sign(
-      { id: seller._id },
-      process.env.REFRESH_TOKEN_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    await Token.create({ admin: seller._id, token: refreshToken });
+    await Token.create({
+      userId: seller._id,
+      role: "seller",
+      token: refreshToken
+    });
 
     res.json({
       message: "Login successful",
@@ -65,7 +61,7 @@ export const loginSeller = async (req, res) => {
 
 export const getMeAsSeller = async (req, res) => {
   try {
-    const seller = await Seller.findById(req.seller.id).select("-password");
+    const seller = await Seller.findById(req.user.id).select("-password");
     if (!seller) return res.status(404).json({ message: "Seller not found" });
 
     res.json(seller);
@@ -86,38 +82,5 @@ export const logoutSeller = async (req, res) => {
     res.json({ message: "Logout successful" });
   } catch (err) {
     res.status(500).json({ message: err.message });
-  }
-};
-
-
-export const refreshSellerToken = async (req, res) => {
-  try {
-    const { refreshToken } = req.body;
-
-    if (!refreshToken)
-      return res.status(401).json({ message: "Refresh token required" });
-
-    const existingToken = await Token.findOne({ token: refreshToken });
-    if (!existingToken)
-      return res.status(403).json({ message: "Invalid refresh token" });
-
-    const decoded = jwt.verify(
-      refreshToken,
-      process.env.REFRESH_TOKEN_SECRET
-    );
-
-    const seller = await Seller.findById(decoded.id);
-    if (!seller)
-      return res.status(404).json({ message: "Seller not found" });
-
-    const newAccessToken = jwt.sign(
-      { id: seller._id, email: seller.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" }
-    );
-
-    res.json({ accessToken: newAccessToken });
-  } catch (error) {
-    res.status(403).json({ message: "Refresh token expired or invalid" });
   }
 };

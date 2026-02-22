@@ -1,35 +1,40 @@
 import { ProductOrder } from "../models/productOrder.model.js";
+import { Product } from "../models/product.model.js";
 
-// Yeni order yaratmaq
+// 🔹 Yeni order yaratmaq
 export const createProductOrder = async (req, res) => {
   try {
-    const customerId = req.user.id; // verifyCustomerToken vasitəsilə gəlir
-    const { productId, orderStatus } = req.body;
+    const customerId = req.user.id; 
+    const { productId } = req.body;
 
-    if (!productId)
+    if (!productId) 
       return res.status(400).json({ message: "productId lazımdır" });
 
+    // məhsulun olub-olmamasını yoxlayaq
+    const productExists = await Product.findById(productId);
+    if (!productExists) 
+      return res.status(404).json({ message: "Product tapılmadı" });
+
     const order = await ProductOrder.create({
-      customer: customerId,        // burada req.user.id istifadə olunur
-      product: productId,
-      orderStatus: orderStatus || "pending",
+      customer: customerId,
+      product: productId
     });
 
     res.status(201).json(order);
+
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 };
 
-
-// Müştərinin bütün sifarişlərini çəkmək
+// 🔹 Müştərinin bütün sifarişləri
 export const getCustomerOrders = async (req, res) => {
   try {
-    const customerId = req.user.id; // verifyCustomerToken middleware ilə gəlir
+    const customerId = req.user.id;
 
     const orders = await ProductOrder.find({ customer: customerId })
-      .populate("product") // productun bütün məlumatlarını gətir
-      .sort({ createdAt: -1 }); // sonuncu sifariş yuxarıda
+      .populate("product")
+      .sort({ createdAt: -1 });
 
     res.json(orders);
   } catch (error) {
@@ -37,20 +42,19 @@ export const getCustomerOrders = async (req, res) => {
   }
 };
 
-
+// 🔹 Seller üçün sifarişləri almaq
 export const getOrdersAsSeller = async (req, res) => {
   try {
-    const sellerId = req.user.id; // seller token-dən gəlir
+    const sellerId = req.user.id;
 
     const orders = await ProductOrder.find()
       .populate({
         path: "product",
-        match: { sellerId: sellerId } // yalnız bu sellerin məhsulları
+        match: { sellerId },
       })
       .populate("customer")
       .sort({ createdAt: -1 });
 
-    // match null olanları silirik
     const filteredOrders = orders.filter(order => order.product !== null);
 
     res.json(filteredOrders);
@@ -59,7 +63,7 @@ export const getOrdersAsSeller = async (req, res) => {
   }
 };
 
-
+// 🔹 Order statusunu yeniləmək
 export const updateOrderStatus = async (req, res) => {
   try {
     const sellerId = req.user.id;
@@ -69,13 +73,13 @@ export const updateOrderStatus = async (req, res) => {
 
     if (!order) return res.status(404).json({ message: "Order tapılmadı" });
 
-    // seller yalnız öz məhsulunu dəyişə bilər
     if (order.product.sellerId.toString() !== sellerId) {
       return res.status(403).json({ message: "Bu order sizə aid deyil" });
     }
 
-    if (!["completed", "cancelled"].includes(status)) {
-      return res.status(400).json({ message: "Yanlış status" });
+    const allowedStatus = ["completed", "cancelled"];
+    if (!allowedStatus.includes(status)) {
+      return res.status(400).json({ message: `Status yalnız ${allowedStatus.join(", ")} ola bilər` });
     }
 
     order.orderStatus = status;

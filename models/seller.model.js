@@ -12,6 +12,10 @@ const sellerSchema = new mongoose.Schema({
     type: String,
     required: true,
     match: /^\+?[0-9]{10,15}$/
+  }, 
+  role: {
+    type: String,
+    default: "seller"
   },
   company: { type: String },
   password: { type: String, required: true }

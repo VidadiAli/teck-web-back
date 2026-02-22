@@ -1,9 +1,10 @@
-import { Customer } from "../models/customer.model.js"
+import { Customer } from "../models/customer.model.js";
 import bcrypt from "bcryptjs";
-import { generateCustomerAccessToken, generateCustomerRefreshToken } from "./customerToken.controller.js";
+import { generateAccessToken, generateRefreshToken } from "../middleware/generateTokens.js";
+import { Token } from "../models/token.model.js";
 
 
-// 🔹 REGISTER
+// REGISTER
 export const registerCustomer = async (req, res) => {
   try {
     const { name, email, phone, password } = req.body;
@@ -18,14 +19,25 @@ export const registerCustomer = async (req, res) => {
       name,
       email,
       phone,
-      password: hashedPassword
+      password: hashedPassword,
+      role: "customer"
     });
 
-    const accessToken = generateCustomerAccessToken(customer);
-    const refreshToken = generateCustomerRefreshToken(customer);
+    const accessToken = generateAccessToken(customer);
+    const refreshToken = generateRefreshToken(customer);
+
+    await Token.create({
+      userId: customer._id,
+      role: customer.role,
+      token: refreshToken
+    });
 
     res.status(201).json({
-      customer,
+      customer: {
+        id: customer._id,
+        name: customer.name,
+        email: customer.email
+      },
       accessToken,
       refreshToken
     });
@@ -36,7 +48,7 @@ export const registerCustomer = async (req, res) => {
 };
 
 
-// 🔹 LOGIN
+// LOGIN
 export const loginCustomer = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -49,11 +61,21 @@ export const loginCustomer = async (req, res) => {
     if (!isMatch)
       return res.status(400).json({ message: "Şifrə yanlışdır" });
 
-    const accessToken = generateCustomerAccessToken(customer);
-    const refreshToken = generateCustomerRefreshToken(customer);
+    const accessToken = generateAccessToken(customer);
+    const refreshToken = generateRefreshToken(customer);
+
+    await Token.create({
+      userId: customer._id,
+      role: "customer",
+      token: refreshToken
+    });
 
     res.json({
-      customer,
+      customer: {
+        id: customer._id,
+        name: customer.name,
+        email: customer.email
+      },
       accessToken,
       refreshToken
     });
@@ -63,36 +85,13 @@ export const loginCustomer = async (req, res) => {
   }
 };
 
-// mövcud register + login funksiyalar burda olmalıdır
 
-// GET ALL CUSTOMERS
+// GET ALL CUSTOMERS (yalnız admin route-da istifadə olunmalıdır)
 export const getCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find();
+    const customers = await Customer.find().select("-password");
     res.json(customers);
   } catch (error) {
     res.status(500).json({ message: error.message });
-  }
-};
-
-
-
-export const refreshCustomerToken = async (req, res) => {
-  try {
-    const { refreshToken } = req.body;
-    if (!refreshToken)
-      return res.status(400).json({ message: "Refresh token lazım" });
-
-    const decoded = jwt.verify(refreshToken, process.env.CUSTOMER_REFRESH_SECRET);
-
-    const newAccessToken = jwt.sign(
-      { id: decoded.id, role: "customer" },
-      process.env.CUSTOMER_ACCESS_SECRET,
-      { expiresIn: "15m" }
-    );
-
-    res.json({ accessToken: newAccessToken });
-  } catch (err) {
-    return res.status(403).json({ message: "Refresh token etibarsızdır" });
   }
 };

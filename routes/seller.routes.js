@@ -1,14 +1,42 @@
 import express from "express";
-import { addSeller, getMeAsSeller, getSellers, loginSeller, logoutSeller, refreshSellerToken } from "../controllers/seller.controller.js";
-import { verifySellerToken, verifyToken } from "../middleware/auth.js";
+import { authenticate, authorize } from "../middleware/auth.js";
+import {
+  addSeller,
+  getMeAsSeller,
+  getSellers,
+  loginSeller,
+  logoutSeller
+} from "../controllers/seller.controller.js";
 
 const router = express.Router();
 
-router.post("/create", verifyToken,  addSeller);   
-router.get("/get", verifyToken, getSellers);  
-router.post("/login", loginSeller) 
-router.post("/logout", logoutSeller)
-router.post("/refreshToken", refreshSellerToken);
-router.get("/getMeAsSeller", verifySellerToken,  getMeAsSeller);
+router.post(
+  "/create",
+  authenticate,
+  authorize("admin"),
+  addSeller
+);
+
+router.get(
+  "/get",
+  authenticate,
+  authorize("admin"),
+  getSellers
+);
+
+router.post("/login", loginSeller);
+
+router.post(
+  "/logout",
+  authenticate,
+  logoutSeller
+);
+
+router.get(
+  "/getMeAsSeller",
+  authenticate,
+  authorize("seller"),
+  getMeAsSeller
+);
 
 export default router;

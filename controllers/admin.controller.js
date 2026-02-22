@@ -1,7 +1,7 @@
 import { Admin } from "../models/admin.model.js";
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import { Token } from "../models/token.model.js";
+import { generateAccessToken, generateRefreshToken } from "../middleware/generateTokens.js";
 
 export const addAdmin = async (req, res) => {
   try {
@@ -32,19 +32,14 @@ export const loginAdmin = async (req, res) => {
     const isMatch = await bcrypt.compare(password, admin.password);
     if (!isMatch) return res.status(400).json({ message: "Invalid password" });
 
-    const accessToken = jwt.sign(
-      { id: admin._id, email: admin.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" } 
-    );
+    const accessToken = generateAccessToken(admin);
+    const refreshToken = generateRefreshToken(admin);
 
-    const refreshToken = jwt.sign(
-      { id: admin._id },
-      process.env.REFRESH_TOKEN_SECRET,
-      { expiresIn: "1d" }
-    );
-
-    await Token.create({ admin: admin._id, token: refreshToken });
+    await Token.create({
+      userId: admin._id,
+      role: "admin",
+      token: refreshToken
+    });
 
     res.json({
       message: "Login successful",
@@ -63,7 +58,7 @@ export const loginAdmin = async (req, res) => {
 
 export const getAdmins = async (req, res) => {
   try {
-    const admins = await Admin.find().select("-password"); 
+    const admins = await Admin.find().select("-password");
     res.json(admins);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -83,7 +78,7 @@ export const deleteAdmin = async (req, res) => {
 
 export const getMyProfile = async (req, res) => {
   try {
-    const admin = await Admin.findById(req.admin.id).select("-password");
+    const admin = await Admin.findById(req.user.id).select("-password");
     if (!admin) return res.status(404).json({ message: "Admin not found" });
 
     res.json(admin);
@@ -92,7 +87,6 @@ export const getMyProfile = async (req, res) => {
   }
 };
 
-
 export const logoutAdmin = async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -100,43 +94,13 @@ export const logoutAdmin = async (req, res) => {
     if (!refreshToken)
       return res.status(400).json({ message: "Refresh token required" });
 
-    await Token.deleteOne({ token: refreshToken });
+    await Token.deleteOne({
+      token: refreshToken,
+      userId: req.user.id
+    });
 
     res.json({ message: "Logout successful" });
   } catch (err) {
     res.status(500).json({ message: err.message });
-  }
-};
-
-
-export const refreshAdminToken = async (req, res) => {
-  try {
-    const { refreshToken } = req.body;
-
-    if (!refreshToken)
-      return res.status(401).json({ message: "Refresh token required" });
-
-    const existingToken = await Token.findOne({ token: refreshToken });
-    if (!existingToken)
-      return res.status(403).json({ message: "Invalid refresh token" });
-
-    const decoded = jwt.verify(
-      refreshToken,
-      process.env.REFRESH_TOKEN_SECRET
-    );
-
-    const admin = await Admin.findById(decoded.id);
-    if (!admin)
-      return res.status(404).json({ message: "Admin not found" });
-
-    const newAccessToken = jwt.sign(
-      { id: admin._id, email: admin.email },
-      process.env.JWT_SECRET,
-      { expiresIn: "15m" }
-    );
-
-    res.json({ accessToken: newAccessToken });
-  } catch (error) {
-    res.status(403).json({ message: "Refresh token expired or invalid" });
   }
 };

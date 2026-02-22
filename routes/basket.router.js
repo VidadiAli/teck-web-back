@@ -7,16 +7,39 @@ import {
   getBasketCount,
   removeFromBasket
 } from "../controllers/basket.controller.js";
-import { verifyCustomerToken } from "../controllers/customerToken.controller.js";
+import { authenticate, authorize } from "../middleware/auth.js";
 
 
 const router = express.Router();
 
-router.get("/", verifyCustomerToken, getBasket);
-router.post("/addToBasket", verifyCustomerToken, addToBasket);
-router.post("/increase", verifyCustomerToken, increaseQuantity);
-router.post("/decrease", verifyCustomerToken, decreaseQuantity);
-router.get("/count", verifyCustomerToken, getBasketCount);
-router.post("/remove", verifyCustomerToken, removeFromBasket);
+router.get("/",
+  authenticate,
+  authorize("customer"),
+  getBasket);
+
+router.post("/addToBasket",
+  authenticate,
+  authorize("customer"),
+  addToBasket);
+
+router.post("/increase",
+  authenticate,
+  authorize("customer"),
+  increaseQuantity);
+
+router.post("/decrease",
+  authenticate,
+  authorize("customer"),
+  decreaseQuantity);
+
+router.get("/count",
+  authenticate,
+  authorize("customer"),
+  getBasketCount);
+
+router.post("/remove",
+  authenticate,
+  authorize("customer"),
+  removeFromBasket);
 
 export default router;

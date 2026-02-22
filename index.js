@@ -10,7 +10,7 @@ import productRoutes from "./routes/product.routes.js";
 import categoryRoutes from "./routes/category.routes.js";
 import mediaRoutes from "./routes/media.routes.js";
 import basketRoutes from "./routes/basket.router.js";
-import AuthRoutes from "./routes/customerToken.routes.js";
+import authRoutes from "./routes/token.routes.js";
 import orderRoutes from "./routes/productOrder.routes.js";
 
 dotenv.config();
@@ -50,7 +50,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/media", mediaRoutes);
 app.use("/api/basket", basketRoutes);
-app.use("/api/auth", AuthRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/orders", orderRoutes);
 
 app.get("/", (req, res) => {

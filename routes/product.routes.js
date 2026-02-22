@@ -1,14 +1,34 @@
 import express from "express";
 import { addProduct, getProducts, getProductByBarcod, getProductsBySeller, getProductsByCategory, getProductsById } from "../controllers/product.controller.js";
-import { verifySellerToken, verifyToken } from "../middleware/auth.js";
+import { authenticate, authorize } from "../middleware/auth.js";
 
 const router = express.Router();
 
-router.post("/createProductByAdmin", verifyToken, addProduct);                       
-router.get("/getProductsByAdmin", verifyToken, getProducts);        
-router.post("/createProductBySeller", verifySellerToken, addProduct);                       
-router.get("/getProductsBySeller/:sellerId", verifySellerToken, getProductsBySeller);                 
-router.get("/getProductsByBarcod/:productByBarcod", verifySellerToken, getProductByBarcod);          
+router.post("/createProductByAdmin", 
+  authenticate,
+  authorize("admin"), 
+  addProduct);     
+
+router.get("/getProductsByAdmin", 
+  authenticate,
+  authorize("admin"), 
+  getProducts);    
+
+router.post("/createProductBySeller", 
+  authenticate,
+  authorize("seller"), 
+  addProduct);      
+
+router.get("/getProductsBySeller/:sellerId", 
+  authenticate,
+  authorize("seller"), 
+  getProductsBySeller);
+
+router.get("/getProductsByBarcod/:productByBarcod", 
+  authenticate,
+  authorize("seller"), 
+  getProductByBarcod);   
+
 router.get("/getProductsByBarcodAsCustomer/:productByBarcod",  getProductByBarcod);                  
 router.get("/getProducts", getProducts);                      
 router.get("/getProductById/:productId", getProductsById);  

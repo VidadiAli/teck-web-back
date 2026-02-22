@@ -1,57 +1,49 @@
 import Basket from "../models/basket.model.js";
 import { Product } from "../models/product.model.js";
 
-// Customer-in basket-i al
 export const getBasket = async (req, res) => {
     try {
         const customerId = req.user.id;
-        const basket = await Basket.findOne({ customer: customerId });
+
+        const basket = await Basket.findOne({ customer: customerId })
+            .populate("products.productId")
+            .lean();
 
         if (!basket || !basket.products.length) {
             return res.json({ items: [], count: 0 });
         }
 
-        // Hər productId üzrə tam məlumatı çəkirik
-        const detailedItems = await Promise.all(
-            basket.products.map(async (bItem) => {
-                const product = await Product.findById(bItem.productId).lean();
-                if (!product) return null; // product tapılmazsa skip et
-                return {
-                    ...product,
-                    quantity: bItem.quantity || 1
-                };
-            })
-        );
+        const items = basket.products
+            .filter(item => item.productId) // silinmiş product varsa skip
+            .map(item => ({
+                ...item.productId,
+                quantity: item.quantity
+            }));
 
-        // null-ları filter edirik
-        const items = detailedItems.filter(Boolean);
-
-        const totalCount = items.reduce((acc, item) => acc + (item.quantity || 1), 0);
+        const totalCount = items.reduce((acc, item) => acc + item.quantity, 0);
 
         res.json({ items, count: totalCount });
 
     } catch (error) {
-        console.error(error);
         res.status(500).json({ message: error.message });
     }
 };
 
 
-// Basket-ə product əlavə et
-
 export const addToBasket = async (req, res) => {
     try {
         const customerId = req.user.id;
-        const { productId, quantity = 1, itemName, price, productBarcod } = req.body;
+        const { productId, quantity = 1 } = req.body;
+
+        const product = await Product.findById(productId);
+        if (!product)
+            return res.status(404).json({ message: "Product not found" });
 
         let basket = await Basket.findOne({ customer: customerId });
 
         if (!basket) {
             basket = new Basket({ customer: customerId, products: [] });
         }
-
-        // products yoxdursa boş array set et
-        if (!basket.products) basket.products = [];
 
         const existingItem = basket.products.find(
             i => i.productId.toString() === productId
@@ -62,16 +54,16 @@ export const addToBasket = async (req, res) => {
         } else {
             basket.products.push({
                 productId,
-                itemName,
-                price,
-                quantity,
-                productBarcod
+                quantity
             });
         }
 
         await basket.save();
 
-        const totalCount = basket.products.reduce((acc, item) => acc + item.quantity, 0);
+        const totalCount = basket.products.reduce(
+            (acc, item) => acc + item.quantity,
+            0
+        );
 
         res.json({ count: totalCount });
 
@@ -161,17 +153,17 @@ export const removeFromBasket = async (req, res) => {
 
 // Basket element sayını almaq
 export const getBasketCount = async (req, res) => {
-  try {
-    const customerId = req.user.id;
-    const basket = await Basket.findOne({ customer: customerId });
+    try {
+        const customerId = req.user.id;
+        const basket = await Basket.findOne({ customer: customerId });
 
-    const totalCount = basket && basket.products
-      ? basket.products.reduce((acc, item) => acc + item.quantity, 0)
-      : 0;
+        const totalCount = basket && basket.products
+            ? basket.products.reduce((acc, item) => acc + item.quantity, 0)
+            : 0;
 
-    res.json({ count: totalCount });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
+        res.json({ count: totalCount });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 };
 
