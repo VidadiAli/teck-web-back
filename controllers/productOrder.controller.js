@@ -4,15 +4,14 @@ import { Product } from "../models/product.model.js";
 // 🔹 Yeni order yaratmaq
 export const createProductOrder = async (req, res) => {
   try {
-    const customerId = req.user.id; 
+    const customerId = req.user.id;
     const { productId } = req.body;
 
-    if (!productId) 
+    if (!productId)
       return res.status(400).json({ message: "productId lazımdır" });
 
-    // məhsulun olub-olmamasını yoxlayaq
     const productExists = await Product.findById(productId);
-    if (!productExists) 
+    if (!productExists)
       return res.status(404).json({ message: "Product tapılmadı" });
 
     const order = await ProductOrder.create({
@@ -20,7 +19,12 @@ export const createProductOrder = async (req, res) => {
       product: productId
     });
 
-    res.status(201).json(order);
+
+    const orderCount = await ProductOrder.find({ customer: customerId });
+
+    const totalCount = orderCount ? orderCount.length : 0;
+
+    res.status(201).json({ count: totalCount });
 
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -87,6 +91,20 @@ export const updateOrderStatus = async (req, res) => {
 
     res.json({ message: "Status yeniləndi", order });
 
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+export const getMyOrderCount = async (req, res) => {
+  try {
+    const customerId = req.user.id;
+    const order = await ProductOrder.find({ customer: customerId });
+
+    const totalCount = order ? order.length : 0;
+
+    res.json({ count: totalCount });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
